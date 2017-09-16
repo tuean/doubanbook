@@ -23,9 +23,8 @@ cursor = connection.cursor()
 print("数据库连接成功")
 
 
-def insert(name, author, publish, press, ISBN, grade, tags, comments):
-    # sql = f"insert into douban_books (name, author, publish, press, ISBN, grade, tags, comments) values ({name} , {author} , {publish} , {press} , {ISBN} , {grade} , {tags} , {comments})"
-    sql = f'insert into douban_books values(0, \'{name}\' , \'{author}\' , \'{publish}\' , \'{press}\' , \'{ISBN}\' , \'{grade}\' , \'{tags}\' , \'{comments}\')'
+def insert(name, author, publish, press, ISBN, grade, tags, comments, bookId):
+    sql = f'insert into douban_books values(0, \'{name}\' , \'{author}\' , \'{publish}\' , \'{press}\' , \'{ISBN}\' , \'{grade}\' , \'{tags}\' , \'{comments}\', \'{bookId}\')'
     print("新增sql" + str(sql))
     try:
 
@@ -41,21 +40,16 @@ def insert(name, author, publish, press, ISBN, grade, tags, comments):
 
 
 headerPool = [
-    # {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0'},
-    # {'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'},
-    # {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.12 Safari/535.11'},
-    # {'User-Agent': 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)'},
-    # {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0'},
-    # {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/44.0.2403.89 Chrome/44.0.2403.89 Safari/537.36'},
+    {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0'},
+    {'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'},
     {
-        'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36"
-        # 'cookie':"bid=XmzY4p7iGuQ; ll=\"108296\"; gr_user_id=04df80b9-dce3-4e9b-9c61-10a32ad9d602; ct=y; viewed=\"12345678_27071333_1734833_1212131_1734846_1734844_1734840_1734837_27045311_26704405\"; "
-        #          "ps=y; gr_cs1_189a509b-a11c-4613-8672-5990a18d7d45=user_id%3A0; dbcl2=\"127533512:iZMDiwOo614\"; ck=yIQE; __utmt=1; __utmt_douban=1; ap=1; push_noty_num=0; push_doumail_num=0; gr_session_"
-        #          "id_22c937bbd8ebd703f2d8e9445f7dfd03=1a50d233-0568-481b-80ae-4897904608b5; gr_cs1_1a50d233-0568-481b-80ae-4897904608b5=user_id%3A1; __utma=30149280.727552494.1504699968.1505217669.1505305962"
-        #          ".5; __utmb=30149280.32.10.1505305962; __utmc=30149280; __utmz=30149280.1504699968.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utmv=30149280.12753; _vwo_uuid_v2=26C691A1DD1651E10BC90"
-        #          "95866120870|3da6e84f1ab2f3f0f41b894d111969aa",
-        # 'Host': 'erebor.douban.com'
-    }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.12 Safari/535.11'},
+    {'User-Agent': 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)'},
+    {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0'},
+    {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/44.0.2403.89 Chrome/44.0.2403.89 Safari/537.36'},
+    {
+        'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36"}
 
 ]
 
@@ -67,7 +61,7 @@ def increaseHeaderPool(header, url):
 
 def download(url, retrys=2, delayFlag=True):
     if delayFlag:
-        sleepSec = random.randint(0, 10) * 1
+        sleepSec = random.randint(0, 10) * 0.5
         time.sleep(sleepSec)
         print("延时" + str(sleepSec) + "s")
     else:
@@ -84,6 +78,8 @@ def download(url, retrys=2, delayFlag=True):
             print(r.status)
             if retrys > 0 and r.status != 404:
                 return download(url, retrys - 1, False)
+            elif r.status == 403:
+                html = "ip"
             else:
                 html = None
     except Exception as e:
@@ -97,27 +93,34 @@ def makeURL(bookId):
 
 def start(bookId):
     # url = 'https://book.douban.com/subject/' + str(bookId) + '/'
-    url = makeURL(bookId)
     toBeContinue = True
     count = 0
+    finishCount = 0
+    finishFlag = 100
     while toBeContinue:
-        if count < 6:
+        if count < 10:
             url = makeURL(bookId)
             result = download(url, 3, True)
             count += 1
 
             show = "成功!" if (result is not None) else "失败!";
-            print("bookId" + str(bookId) + " 返回结果:" + str(show))
+            print("bookId: " + str(bookId) + " 返回结果:" + str(show))
             if result is None:
                 bookId += 1
+                finishCount += 1
+                if finishCount > finishFlag:
+                    print("爬取结束")
+                    print("最后一个有效的bookId:" + str(bookId - 100))
                 continue
+            elif result == 'ip':
+                print("bookId:" + str(bookId))
+                return
             else:
                 print("开始解析：\n" + url)
                 toBeContinue = transfer(result, bookId)
                 bookId += 1
-                url = makeURL(bookId)
         else:
-            time.sleep(10)
+            time.sleep(5)
             print("延时10s")
             count = 0
             continue
@@ -189,12 +192,14 @@ def transfer(result, bookId):
             tags = ''
         if comments is None:
             comments = ''
-        insert(name, author, publish_year, press, ISBN, db_grade, tags, comments)
+        author.replace("'", "\\'")
+        press.replace("'", "\\'")
+        insert(name, author, publish_year, press, ISBN, db_grade, tags, comments, bookId)
 
     return True
 
 
-bookId = 10002110
+bookId = 10004102
 
 start(bookId)
 # print(soup.prettify())
