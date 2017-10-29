@@ -23,20 +23,24 @@ cursor = connection.cursor()
 print("数据库连接成功")
 
 
-def insert(name, author, publish, press, ISBN, grade, tags, comments, bookId):
-    sql = f'insert into douban_books values(0, \'{name}\' , \'{author}\' , \'{publish}\' , \'{press}\' , \'{ISBN}\' , \'{grade}\' , \'{tags}\' , \'{comments}\', \'{bookId}\')'
-    print("新增sql" + str(sql))
+def getBookId():
+    sql = f'select book_id from douban_id'
     try:
-
-        # data = (name, author, publish, press, ISBN, grade, tags, comments)
         cursor.execute(sql)
-        connection.commit()
+        result = cursor.fetchone()
+        if result is None:
+            return '10094411'
+        else:
+            return result
     except Exception as e:
         connection.rollback()
         print("插入失败 回滚")
         print(e)
     else:
-        print('成功插入', cursor.rowcount, '条数据')
+        print('查询成功')
+
+
+
 
 
 headerPool = [
@@ -60,8 +64,9 @@ def increaseHeaderPool(header, url):
 
 
 def download(url, retrys=2, delayFlag=True):
+    html = None
     if delayFlag:
-        sleepSec = random.randint(0, 10) * 0.5
+        sleepSec = random.randint(0, 10) * 0.25
         time.sleep(sleepSec)
         print("延时" + str(sleepSec) + "s")
     else:
@@ -97,111 +102,124 @@ def start(bookId):
     count = 0
     finishCount = 0
     finishFlag = 100
+    failCount = 0
     while toBeContinue:
         if count < 10:
             url = makeURL(bookId)
             result = download(url, 3, True)
             count += 1
 
-            show = "成功!" if (result is not None) else "失败!";
+            show = "成功!" if (result is not None) else "失败!"
             print("bookId: " + str(bookId) + " 返回结果:" + str(show))
+            # print(time.time())
+            print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             if result is None:
-                bookId += 1
+                if failCount > 10:
+                    bookId += 500
+                else:
+                    bookId += 1
                 finishCount += 1
+                failCount += 1
                 if finishCount > finishFlag:
                     print("爬取结束")
                     print("最后一个有效的bookId:" + str(bookId - 100))
                 continue
             elif result == 'ip':
+                failCount = 0
                 print("bookId:" + str(bookId))
                 return
             else:
+                failCount = 0
                 print("开始解析：\n" + url)
                 toBeContinue = transfer(result, bookId)
                 bookId += 1
         else:
             time.sleep(5)
-            print("延时10s")
+            print("延时5s")
             count = 0
             continue
 
 
 def transfer(result, bookId):
-    soup = bs4.BeautifulSoup(result, 'lxml')
+    try:
+        soup = bs4.BeautifulSoup(result, 'lxml')
 
-    name = str(soup.h1.text).replace("\n", "").replace("\r", "")
-    print("书籍名称：" + str(name))
+        name = ''
+        name = str(soup.h1.text).replace("\n", "").replace("\r", "")
+        print("书籍名称：" + str(name))
 
-    author = str(soup.find(id='info').span.text).replace("\n", "").replace("\r", "").replace("作者:", "").replace(" ", "")
-    print("作者：" + author)
+        author = str(soup.find(id='info').span.text).replace("\n", "").replace("\r", "").replace("作者:", "").replace(" ",
+                                                                                                                    "")
+        print("作者：" + author)
 
-    pls = soup.find_all(class_='pl')
-    press = ''
-    publish_year = ''
-    page_number = ''
-    price = ''
-    ISBN = ''
-    for pl in pls:
-        if str(pl.text).__contains__("出版社"):
-            press = str(pl.nextSibling).replace(" ", "")
-            print("出版社：" + press)
-        if str(pl.text).__contains__("出版年"):
-            publish_year = str(pl.nextSibling).replace(" ", "")
-            print("出版年：" + publish_year)
-        if str(pl.text).__contains__("页数"):
-            page_number = str(pl.nextSibling).replace(" ", "")
-            print("页数：" + page_number)
-        if str(pl.text).__contains__("价格"):
-            price = str(pl.nextSibling).replace(" ", "")
-            print("价格：" + price)
-        if str(pl.text).__contains__("ISBN"):
-            ISBN = str(pl.nextSibling).replace(" ", "")
-            print("ISBN：" + ISBN)
+        pls = soup.find_all(class_='pl')
+        press = ''
+        publish_year = ''
+        page_number = ''
+        price = ''
+        ISBN = ''
+        for pl in pls:
+            if str(pl.text).__contains__("出版社"):
+                press = str(pl.nextSibling).replace(" ", "")
+                print("出版社：" + press)
+            if str(pl.text).__contains__("出版年"):
+                publish_year = str(pl.nextSibling).replace(" ", "")
+                print("出版年：" + publish_year)
+            if str(pl.text).__contains__("页数"):
+                page_number = str(pl.nextSibling).replace(" ", "")
+                print("页数：" + page_number)
+            if str(pl.text).__contains__("价格"):
+                price = str(pl.nextSibling).replace(" ", "")
+                print("价格：" + price)
+            if str(pl.text).__contains__("ISBN"):
+                ISBN = str(pl.nextSibling).replace(" ", "")
+                print("ISBN：" + ISBN)
 
-    db_grade = str(soup.find("strong", class_="ll").text)
-    print("豆瓣评分：" + db_grade)
+        db_grade = str(soup.find("strong", class_="ll").text)
+        print("豆瓣评分：" + db_grade)
 
-    taglist = soup.find_all(class_="tag")
-    tags = ""
-    for tag in taglist:
-        if tags != "":
-            tags += "、"
-        tags += str(tag.text)
-    print("标签：" + tags)
+        taglist = soup.find_all(class_="tag")
+        tags = ""
+        for tag in taglist:
+            if tags != "":
+                tags += "、"
+            tags += str(tag.text)
+        print("标签：" + tags)
 
-    commentlist = soup.find_all(class_="comment-content")
-    comments = ""
-    for comment in commentlist:
-        if comments != "":
-            comments += "<>"
-        comments += str(comment.text)
-    print("评论：" + comments)
+        commentlist = soup.find_all(class_="comment-content")
+        comments = ""
+        for comment in commentlist:
+            if comments != "":
+                comments += "<>"
+            comments += str(comment.text)
+        print("评论：" + comments)
 
-    if name is not None and str(name) != '':
-        if author is None:
-            author = ''
-        if publish_year is None:
-            publish_year = ''
-        if press is None:
-            press = ''
-        if ISBN is None:
-            ISBN = ''
-        if db_grade is None:
-            db_grade = ''
-        if tags is None:
-            tags = ''
-        if comments is None:
-            comments = ''
-        author.replace("'", "\\'")
-        press.replace("'", "\\'")
-        insert(name, author, publish_year, press, ISBN, db_grade, tags, comments, bookId)
-
+        if name is not None and str(name) != '':
+            if author is None:
+                author = ''
+            if publish_year is None:
+                publish_year = ''
+            if press is None:
+                press = ''
+            if ISBN is None:
+                ISBN = ''
+            if db_grade is None:
+                db_grade = ''
+            if tags is None:
+                tags = ''
+            if comments is None:
+                comments = ''
+            author.replace("'", "\\'")
+            press.replace("'", "\\'")
+            insert(name, author, publish_year, press, ISBN, db_grade, tags, comments, bookId)
+    except Exception as e:
+        print(e)
+        return False
     return True
 
 
-bookId = 10004102
+bookId = 10094411
 
-start(bookId)
-# print(soup.prettify())
-# print(download(url), end='\r\n')
-# print('111\n111')
+# start(bookId)
+
+print(str(getBookId()))
