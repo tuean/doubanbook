@@ -17,7 +17,7 @@ import imaplib
 from email.parser import HeaderParser
 
 m = imaplib.IMAP4_SSL("imap.ele.me")
-m.login("xiaotian.zhong@ele.me", "Tuean_330@")
+m.login("xxxx@ele.me", "XXXX")
 # get list of mailboxes
 list = m.list();
 # select which mail box to process
