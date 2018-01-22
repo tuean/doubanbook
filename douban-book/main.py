@@ -1,13 +1,11 @@
 # encoding: utf-8
 
-import request
-import urllib3
-import time
 import random
+import time
+
 import bs4
-import lxml
 import pymysql
-import db
+import urllib3
 
 # 数据库链接
 connection = pymysql.connect(

@@ -1,0 +1,39 @@
+import imaplib
+
+# box = imaplib.IMAP4_SSL('imap.ele.me', 993)
+# box.login("xiaotian.zhong@ele.me","Tuean_330@")
+# box.select('Inbox')
+# typ, data = box.search(None, 'ALL')
+# for num in data[0].split():
+#    # box.store(num, '+FLAGS', '\\Deleted')
+#    print(num)
+#
+# box.expunge()
+# box.close()
+# box.logout()
+# print("111")
+
+import imaplib
+from email.parser import HeaderParser
+
+m = imaplib.IMAP4_SSL("imap.ele.me")
+m.login("xiaotian.zhong@ele.me", "Tuean_330@")
+# get list of mailboxes
+list = m.list();
+# select which mail box to process
+m.select("Inbox")
+resp, data = m.uid('search', None, "ALL")  # search and return Uids
+uids = data[0].split()
+mailparser = HeaderParser()
+for uid in uids:
+    resp, data = m.uid('fetch', uid, "(BODY[HEADER])")
+    msg = mailparser.parsestr(str(data[0][1], encoding='utf-8'))
+    print(msg['From'], msg['Date'], msg['Subject'])
+    sender = str(msg['From'])
+    if sender.__contains__("tss@ele.me") or sender.__contains__("hhs@ele.me"):
+        print("subject:" + str(msg['Subject']))
+        print(m.uid('STORE', uid, '+FLAGS', '(\\Deleted)'))
+        print(m.expunge())
+        # break
+m.close()  # close the mailbox
+m.logout()  # logout
