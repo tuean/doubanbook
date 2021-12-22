@@ -3,13 +3,14 @@ from openpyxl import load_workbook
 import csv
 
 # IM群推组id为32
-org_id = 32
+org_id = 100523
 sql = 'insert into ims.org_employee_relation(`id`, `org_id`, `employee_id`, `employee_name`, `type`) values (' \
-      '0, 32, "%employee_id%", "%employee_name%", 2);'
-delete_sql = 'delete from ims.org_employee_relation where org_id = 32 and employee_id = "%employee_id%";'
+      '0, 100523, "%employee_id%", "%employee_name%", 2);'
+delete_sql = 'delete from ims.org_employee_relation where org_id = 100523 and employee_id = "%employee_id%";'
 
 user_file_path = "C:\\Users\\user\\Downloads\\yjbadmin_user_info-1208.xlsx"
-names_file_path = "C:\\Users\\user\\Downloads\\零售线名册-截止930.xlsx"
+# names_file_path = "C:\\Users\\user\\Downloads\\零售线名册-截止930.xlsx"
+names_file_path = "C:\\Users\\user\\Downloads\\人员名册1130.xlsx"
 
 
 def start():
@@ -27,7 +28,7 @@ def start():
         #         ehr_account = int(sheet.cell(row=i, column=18).value)
         #     except Exception as e2:
         #         print("line " + str(i) + "with no ehr ")
-        if len(str(ehr_account)) > 11:
+        if len(str(ehr_account)) > 10:
               ehr_account = sheet.cell(row=i, column=18).value
         # if ehr_account is None:
         #     continue
@@ -43,15 +44,15 @@ def start():
     for i in range(2, sheet2.max_row + 1):
         ehr_account = sheet2.cell(row=i, column=3).value
         if ehr_account is None:
-            print("line " + str(i) + " is empty")
+            # print("line " + str(i) + " is empty")
             continue
         name = l.get(str(ehr_account))
         if name is None:
-            print("ehr " + str(ehr_account) + " has no name")
+            # print("ehr " + str(ehr_account) + " has no name")
             continue
         id = m.get(str(ehr_account))
         if id is None:
-            print("ehr " + str(ehr_account) + " has no id")
+            # print("ehr " + str(ehr_account) + " has no id")
             continue
         ds = delete_sql.replace("%employee_id%", str(id))
         print(ds)
